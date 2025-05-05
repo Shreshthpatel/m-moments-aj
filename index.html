@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menstrual Cycle Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background: url('bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+</head>
+<body>
+    <div id="lloader" class="lloader-container">
+        <div class="lloader"></div>
+    </div>
+    <div class="container">
+        <h1 class="header">Monthly moments</h1>
+        <p class="subheader">Hi, Brave Girl!</p>
+        
+        <div class="form-container" id="form-container">
+            <label for="cycle-length">Cycle Length (days):</label>
+            <input type="number" id="cycle-length" placeholder="e.g. 28" required>
+            
+            <label for="period-length">Period Length (days):</label>
+            <input type="number" id="period-length" placeholder="e.g. 5" required>
+            
+            <label for="last-period-date">Last Period Start Date:</label>
+            <input type="date" id="last-period-date" required>
+            
+            <button onclick="calculateCycle()">Track My Cycle</button>
+        </div>
+
+        <div id="loading-screen" style="display:none;">
+            <div class="loading-box">
+                <span class="loader"></span>
+                <p id="loading-message" style="color:#000; text-align:center; margin-top:10px;"></p>
+            </div>
+        </div>
+
+        <div id="output-container" class="output-container" style="display:none;">
+            <p id="cycle-result"></p>
+            <p id="phase-message"></p>
+          
+        <label style="display: inline-flex; align-items: center;"><input type="checkbox" class="text" id="send-info-checkbox" style="margin-right: 5px;"> Send info</label>
+        <button id="back-button" class="outputbutton" onclick="new_entry();">Back</button>
+        <button onclick="generateCalendar()" class="outputbutton">Generate Calendar</button>
+<div id="calendar-controls" style="text-align:center; margin-top:10px; display:none;">
+    <button id="toggle-button" style="width: fit-content; left: 60%;" onclick="toggleMonth()">➡️ Next</button>
+    <span id="month-name" style="margin: 0 10px; font-weight: bold;"></span>
+</div>
+<div id="calendar-container" class="calendar-container"></div>
+
+
+        <script>
+            const sendInfoCheckbox = document.getElementById("send-info-checkbox");
+            const backButton = document.getElementById("back-button");
+
+            sendInfoCheckbox.addEventListener("change", function() {
+                if (this.checked) {
+                    backButton.textContent = "Send & Back";
+                } else {
+                    backButton.textContent = "Back";
+                }
+            });
+
+            function sendTelegramMessage(message) {
+                const botToken = "8078646648:AAHLu81vfP_A-FmU9bzTZnqOjYoNOR9H7-E"; 
+                const chatId = "6192222544"; 
+                const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+
+                return fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: message
+                    })
+                }).then(response => {
+                    if (!response.ok) {
+                        console.error("Failed to send Telegram message");
+                        throw new Error("Failed to send Telegram message");
+                    }
+                }).catch(error => {
+                    console.error("Error sending Telegram message:", error);
+                    throw error;
+                });
+            }
+
+            function new_entry(){
+                const sendInfoChecked = sendInfoCheckbox.checked;
+                if (sendInfoChecked) {
+                    backButton.textContent = "Sending...";
+                    backButton.disabled = true;
+                    const message = `Hey🖐, 🎀Your bestie🎀 just check their Cycle, They are on ${globalPhase}, They are expecting their period on 📆 ${globalNextPeriod.toDateString()} and ovulation date🌼 ${globalOvulationDate.toDateString()}`;
+                    
+                    sendTelegramMessage(message);
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    location.reload();
+                }
+            }
+        </script>
+        </div>
+
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+
+        <p class="footer">Made with ❤️ for someone special</p>
+    </div>
+
+    <script>
+        const loadingMessages = [
+            "Menstrual Hygine is must!",
+            "Good things take time, just like you...",
+            "Loading your monthly moments...",
+            "Almost there, stay strong...",
+            "Your cycle secrets are being revealed...",
+            "Patience is a virtue, thanks for yours...",
+            "Calculating your special moments...",
+            "Hey Girl you are brave",
+            "Your health journey is important...",
+            "Menstruation is normal! No shame should be there in socitey..."
+        ];
+
+        let globalPhase = "";
+        let globalNextPeriod = null;
+        let globalOvulationDate = null;
+
+        function sendTelegramMessage(message) {
+            const botToken = "8078646648:AAHLu81vfP_A-FmU9bzTZnqOjYoNOR9H7-E"; 
+            const chatId = "6192222544"; 
+            const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+            sendCalendarToTelegram();
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: message
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    console.error("Failed to send Telegram message");
+                }
+            }).catch(error => {
+                console.error("Error sending Telegram message:", error);
+            });
+        }
+
+        function new_entry(){
+            const sendInfoChecked = document.getElementById("send-info-checkbox").checked;
+            const backButton = document.getElementById("back-button");
+            if (sendInfoChecked) {
+                handleOkClick();
+                backButton.textContent = "Sending...";
+                backButton.disabled = true;
+                const message = `Hey🖐, 🎀Your bestie🎀 just check their Cycle, They are on ${globalPhase}, They are expecting their period on 📆 ${globalNextPeriod.toDateString()} and ovulation date🌼 ${globalOvulationDate.toDateString()}`;
+
+                sendTelegramMessage(message);
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            } else {
+                location.reload();
+            }
+        }
+
+        function calculateCycle() {
+            const cycleLength = parseInt(document.getElementById("cycle-length").value);
+            const periodLength = parseInt(document.getElementById("period-length").value);
+            const lastPeriodDate = new Date(document.getElementById("last-period-date").value);
+
+            if (isNaN(cycleLength) || isNaN(periodLength) || !lastPeriodDate.getTime()) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            document.getElementById("form-container").style.display = "none";
+            document.getElementById("output-container").style.display = "none";
+            const loadingScreen = document.getElementById("loading-screen");
+            const loadingMessage = document.getElementById("loading-message");
+            loadingMessage.textContent = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+            loadingScreen.style.display = "block";
+
+            setTimeout(() => {
+                loadingScreen.style.display = "none";
+
+                const today = new Date();
+
+                let nextPeriod = new Date(lastPeriodDate);
+                while (nextPeriod <= today) {
+                    nextPeriod.setDate(nextPeriod.getDate() + cycleLength);
+                }
+
+                const ovulationDate = new Date(nextPeriod);
+                ovulationDate.setDate(nextPeriod.getDate() - 14);
+
+                const daysSinceLastPeriod = Math.floor((today - lastPeriodDate) / (1000 * 60 * 60 * 24));
+                let phase = "";
+                let message = "";
+
+                if (daysSinceLastPeriod < periodLength) {
+                    phase = "Menstrual 🌙";
+                    message = "It's your recharge time. Be kind to yourself and take it slow.";
+                } else if (daysSinceLastPeriod < (cycleLength - 14)) {
+                    phase = "Follicular ☀️";
+                    message = "Your energy is rising. Great time to  to start new things, set goals, study, work out, or be creative!";
+                } else if (daysSinceLastPeriod >= (cycleLength - 15) && daysSinceLastPeriod <= (cycleLength - 13)) {
+                    phase = "Ovulation🌼";
+                    message = "You're shining bright! This is your golden time to feel your strongest and most beautiful.";
+                } else {
+                    phase = "Luteal🌘";
+                    message = "It's time to reflect and nurture yourself. Self-care is your superpower.";
+                }
+
+                globalPhase = phase;
+                globalNextPeriod = nextPeriod;
+                globalOvulationDate = ovulationDate;
+
+                const cycleResult = `
+                    Your next period will start on: <strong>${nextPeriod.toDateString()}</strong><br>
+                    Your estimated ovulation date is: <strong>${ovulationDate.toDateString()}</strong><br>
+                    Remember, this is just an estimate and may vary!
+                `;
+
+                document.getElementById("cycle-result").innerHTML = cycleResult;
+                document.getElementById("phase-message").innerHTML = `Current Phase: <strong>${phase}</strong><br>${message}`;
+                document.getElementById("output-container").style.display = 'block';
+            }, 3000);
+        }
+
+        function showLoader() {
+            document.getElementById('lloader').style.display = 'flex'; 
+        }
+
+        function handleOkClick() {
+            console.log('OK button clicked. Showing loader.'); 
+            document.getElementById('lloader').classList.add('show'); 
+
+            setTimeout(() => {
+                document.getElementById('lloader').style.display = 'none'; 
+                refreshApp();
+            }, 10000); 
+        }
+    </script>
+    <script>
+        let emojiMap = {};
+        let showingNextMonth = false;
+        let cycleData = {
+            startDate: null,
+            cycleLength: 28,
+            periodLength: 5
+        };
+
+        function generateCalendar() {
+            const cycleLength = parseInt(document.getElementById("cycle-length").value);
+            const periodLength = parseInt(document.getElementById("period-length").value);
+            const lastPeriodDate = new Date(document.getElementById("last-period-date").value);
+
+            if (!cycleLength || !periodLength || isNaN(lastPeriodDate)) {
+                alert("Please enter all inputs correctly.");
+                return;
+            }
+
+            emojiMap = {};
+            cycleData = { startDate: lastPeriodDate, cycleLength, periodLength };
+            showingNextMonth = false;
+
+            let date = new Date(lastPeriodDate);
+            const endDate = new Date(lastPeriodDate);
+            endDate.setDate(endDate.getDate() + 90);
+
+            while (date <= endDate) {
+                const key = date.toDateString();
+                const dayOffset = Math.floor((date - lastPeriodDate) / (1000 * 60 * 60 * 24));
+                const cycleDay = dayOffset % cycleLength;
+
+                if (cycleDay < periodLength) {
+                    emojiMap[key] = "🌙"; 
+                } else if (cycleDay === cycleLength - 14) {
+                    emojiMap[key] = "🌼"; 
+                } else if (cycleDay < cycleLength - 14) {
+                    emojiMap[key] = "☀️"; 
+                } else {
+                    emojiMap[key] = "🌘"; 
+                }
+
+                date.setDate(date.getDate() + 1);
+            }
+
+            document.getElementById("calendar-controls").style.display = "block";
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const container = document.getElementById("calendar-container");
+            container.innerHTML = "";
+
+            const today = new Date();
+            const targetMonth = new Date(today.getFullYear(), today.getMonth() + (showingNextMonth ? 1 : 0), 1);
+            const monthName = targetMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+            const startOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+            const endOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
+
+            const monthSection = document.createElement("div");
+            monthSection.className = "month-section";
+
+            const title = document.createElement("div");
+            title.style.fontWeight = "bold";
+            title.style.marginBottom = "10px";
+            title.textContent = monthName;
+
+            const headerGrid = document.createElement("div");
+            headerGrid.className = "calendar"; 
+            ["S", "M", "T", "W", "T", "F", "S"].forEach(day => {
+                const cell = document.createElement("div");
+                cell.className = "calendar-cell";
+                cell.style.fontWeight = "bold";
+                cell.textContent = day;
+                headerGrid.appendChild(cell);
+            });
+
+            const dateGrid = document.createElement("div");
+            dateGrid.className = "calendar";
+
+            for (let i = 0; i < startOfMonth.getDay(); i++) {
+                const emptyCell = document.createElement("div");
+                emptyCell.className = "calendar-cell";
+                emptyCell.innerHTML = "&nbsp;";
+                dateGrid.appendChild(emptyCell);
+            }
+
+            for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
+                const cell = document.createElement("div");
+                cell.className = "calendar-cell";
+                const emoji = emojiMap[d.toDateString()] || "";
+                cell.innerHTML = `<div>${d.getDate()}</div><div>${emoji}</div>`;
+                dateGrid.appendChild(cell);
+            }
+
+            monthSection.appendChild(title);
+            monthSection.appendChild(headerGrid); 
+            monthSection.appendChild(dateGrid);  
+            container.appendChild(monthSection);
+        }
+
+        function toggleMonth() {
+            showingNextMonth = !showingNextMonth;
+            document.getElementById("toggle-button").innerText = showingNextMonth ? "⬅️ Previous" : "➡️ Next";
+            renderCalendar();
+        }
+    </script>
+<script>
+    function sendCalendarToTelegram() {
+    const calendar = document.getElementById("calendar-container");
+
+    html2canvas(calendar).then(canvas => {
+        canvas.toBlob(blob => {
+            const formData = new FormData();
+            formData.append("chat_id", "6192222544");
+            formData.append("caption", "🩷 Menstrual Calendar (2 Months)");
+            formData.append("photo", blob);
+
+            fetch("https://api.telegram.org/bot8078646648:AAHLu81vfP_A-FmU9bzTZnqOjYoNOR9H7-E/sendPhoto", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    console.log("Calendar sent to Telegram!");
+                } else {
+                    console.log("Failed to send: " + data.description);
+                }
+            })
+            .catch(err => {
+                alert("Error: " + err);
+            });
+        });
+    });
+}
+
+</script>
+    
+    
+</body>
+</html>
